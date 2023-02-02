@@ -1,13 +1,16 @@
 <?php
 
-namespace App\Http\Controllers\admin;
+namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use App\Models\Project;
-use App\Http\Requests\StoreProjectRequest;
-use App\Http\Requests\UpdateProjectRequest;
+use App\Models\Category;
+use App\Models\Technology;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Storage;
+
+
+
 
 class ProjectController extends Controller
 {
@@ -18,9 +21,15 @@ class ProjectController extends Controller
      */
     public function index()
     {
-        $projects = Project::all();
-        
+
+        $projects = Project::paginate(10);
         return view('admin.projects.index', compact('projects'));
+    }
+
+    public function categories_project()
+    {
+        $categories = Category::all();
+        return view('admin.projects.category_projects_list', compact('categories'));
     }
 
     /**
@@ -28,9 +37,11 @@ class ProjectController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(Project $project)
     {
-        return view('admin.projects.create');
+        $categories = Category::all();
+        $technologies = Technology::all();
+        return view('admin.projects.create', compact('project', 'categories', 'technologies'));
     }
 
     /**
@@ -39,65 +50,95 @@ class ProjectController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(StoreProjectRequest $request)
+    public function store(Request $request)
     {
-        $data=$request->validated();
-        $new_project= new Project();
-        $new_project->fill($data);
-        $new_project->slug=Str::slug($new_project->name,'-');
-        $new_project->save();
-        return redirect()->route('admin.projects.index')->with('message',"Project '$new_project->names'");
+        $project_data = $request->all();
+
+        $project_data['slug'] = Project::generateSlug($project_data['name']);
+
+        if (array_key_exists('cover_image', $project_data)) {
+            $project_data['cover_image_original_name'] = $request->file('cover_image')->getClientOriginalName();
+            $project_data['cover_image'] = Storage::put('uploads', $project_data['cover_image']);
+        }
+
+        // dd($project_data);
+
+        // $new_project = new Project();
+        // $new_project->fill($project_data);
+        // $new_project->save();
+
+        $new_project = Project::create($project_data);
+
+        if (array_key_exists('technologies', $project_data)) {
+            $new_project->technologies()->attach($project_data['technologies']);
+        }
+
+        return redirect()->route('admin.projects.show', $new_project);
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  \App\Models\Project  $project
      * @return \Illuminate\Http\Response
      */
-    public function show(Project $projects)
+    public function show(Project $project)
     {
-        // dd($projects);
-        return view('admin.projects.show',compact('projects'));
+
+        return view('admin.projects.show', compact('project'));
     }
 
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  int  $id
+     * @param  \App\Models\Project  $project
      * @return \Illuminate\Http\Response
      */
-    public function edit(Project $projects)
+    public function edit(Project $project)
     {
-        return view('admin.projects.edit',compact('projects'));
+        $categories = Category::all();
+        $technologies = Technology::all();
+        return view('admin.projects.edit', compact('project', 'categories', 'technologies'));
     }
 
     /**
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  \App\Models\Project  $project
      * @return \Illuminate\Http\Response
      */
-    public function update(UpdateProjectRequest $request, Project $projects)
+    public function update(Request $request, Project $project)
     {
-        $old_name=$projects->name;
-        $data=$request->validated();
-        $projects->slug = Str::slug($data['name'],'-');
-        $projects->update($data);
-        return redirect()->route('admin.projects.index')->with('message',"Project '$old_name' updated.");
+        $project_data = $request->all();
+
+        if (array_key_exists('cover_image', $project_data)) {
+
+            if ($project->cover_image) {
+                Storage::disk('public')->delete($project->cover_image);
+            }
+            $project_data['cover_image_original_name'] = $request->file('cover_image')->getClientOriginalName();
+            $project_data['cover_image'] = Storage::put('uploads', $project_data['cover_image']);
+        }
+
+        $project->update($project_data);
+        return redirect()->route('admin.projects.show');
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
+     * @param  \App\Models\Project  $project
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Project $projects)
+    public function destroy(Project $project)
     {
-        $old_name=$projects->name;
-        $projects->delete();
-        return redirect()->route('admin.projects.index')->with('message',"Project '$old_name' deleted.");
+        $project->delete();
+
+        if ($project->cover_image) {
+            Storage::disk('public')->delete($project->cover_image);
+        }
+
+        return redirect()->route('admin.projects.index');
     }
 }

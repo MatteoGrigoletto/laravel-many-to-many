@@ -1,58 +1,62 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('content')
+    <div class="container">
+        <h1 class="mt-3">Elenco dei progetti</h1>
 
-<h1 class="my-4">Projects List</h1>
-<a href="{{route('admin.projects.create')}}" class="btn btn-success">Create Project</a>
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col">N#</th>
-            <th scope="col">Name</th>
-            <th scope="col">Describe</th>
-            <th scope="col">...</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach ($projects as $project)
-            <tr>
-                <th scope="row">{{$project->id}}</th>
-                <td>{{$project->name}}</td>
-                <td>{{$project->description}}</td>
-                <td>{{$project->client}}</td>
-                <td>
-                    <a href="{{route('admin.projects.show',$project->slug)}}" class="btn btn-primary">Info</a>
-                </td>
-                <td>
-                    <a href="{{route('admin.projects.edit',$project->slug)}}" class="btn btn-warning">Modify</a>
-                </td>
-                <td>
-                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modal{{$project->id}}">Delete</button>
-                </td>
-            </tr>
-            <div class="modal fade" id="modal{{$project->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="exampleModalLabel">Confirm</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            Vuoi eliminare {{$project->name}}?
-                        </div>
-                        <div class="modal-footer">
-                            <form action="{{route('admin.projects.destroy',$project)}}"    method="POST">
-                                @csrf
-                                @method('DELETE')
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">no</button>
-                                <button type="submit" class="btn btn-primary">yes</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+        <a href="{{ route('admin.projects.create') }}" class="btn btn-success mt-3">Aggiungi un nuovo progetto</a>
+
+        <div class="row">
+            <div class="col mt-5">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Titolo</th>
+                            <th scope="col">Nome cliente</th>
+                            <th scope="col">Tecnologia</th>
+                            <th scope="col">Descrizione</th>
+                            <th scope="col">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($projects as $project)
+                            <tr>
+                                <th scope="row">{{ $project->id }}</th>
+                                <td width="15%">{{ $project->name }} <span
+                                        class="badge text-bg-info ms-3">{{ $project->category->name }}</span></td>
+                                <td>{{ $project->client_name }}</td>
+                                <td>
+                                    @forelse ($project->technologies as $technology)
+                                        <span class="badge text-bg-danger">
+                                            {{ $technology->name }}
+                                        </span>
+                                    @empty
+                                        --no data--
+                                    @endforelse
+                                </td>
+                                <td>{{ $project->summary }}</td>
+                                <td class="d-flex">
+                                    <a href="{{ route('admin.projects.show', $project) }}" class="btn btn-primary mx-1"
+                                        title="show"><i class="fa-regular fa-eye"></i></a>
+                                    <a class="btn btn-warning mx-1" href="{{ route('admin.projects.edit', $project) }}"
+                                        title="edit"><i class="fa-solid fa-pencil"></i></a>
+                                    <form onsubmit="return confirm('Vuoi davvero eliminare {{ $project['name'] }}?')"
+                                        class="d-inline" action=" {{ route('admin.projects.destroy', $project) }} "
+                                        method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger mx-1">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        @endforeach
-    </tbody>
-</table>
-
+        </div>
+        {{ $projects->links() }}
+    </div>
 @endsection
